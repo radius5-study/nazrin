@@ -1,0 +1,6 @@
+directory = "./data"
+recursive = true
+remove_underline = true
+score_threshold = 0.35
+batch_size = 32
+model_repo = "SmilingWolf/wd-v1-4-swinv2-tagger-v2" # SmilingWolf/wd-v1-4-vit-tagger-v2, SmilingWolf/wd-v1-4-convnextv2-tagger-v2, SmilingWolf/wd-v1-4-swinv2-tagger-v2, SmilingWolf/wd-v1-4-moat-tagger-v2

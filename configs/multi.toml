@@ -1,0 +1,17 @@
+fs = "local"
+limit = 1250
+task_size = 500
+save_original_size = false
+convert = "webp"
+max_workers = 12
+
+[filter.tags]
+must = "1girl"
+deny = "1boy"
+
+[[subsets]]
+outpath = "./data/nsfw"
+tags = "1girl -rating:general order:score age:<1year"
+[[subsets]]
+outpath = "./data/sfw"
+tags = "1girl rating:general order:score age:<1year"

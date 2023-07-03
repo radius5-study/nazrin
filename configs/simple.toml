@@ -1,0 +1,13 @@
+fs = "local"
+limit = 100
+task_size = 100
+save_original_size = true
+convert_to_png = true
+max_workers = 12
+
+outpath = "./data"
+tags = "1girl rating:general order:score age:<1year"
+
+[filter.tags]
+must = ["1girl"]
+deny = '1boy 2boys 3boys 4boys 5boys 6boys duplicate'
