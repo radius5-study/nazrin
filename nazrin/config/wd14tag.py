@@ -8,6 +8,6 @@ class WD14TagConfig(BaseConfig):
     recursive: bool = False
     remove_underline: bool = True
     score_threshold: float = 0.35
-    model_repo: str = "SmilingWolf/wd-v1-4-vit-tagger"
+    tagger_repo: str = "SmilingWolf/wd-v1-4-vit-tagger"
     batch_size: int = 1
     max_workers: int = 4

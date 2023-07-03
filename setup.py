@@ -11,11 +11,8 @@ REQUIREMENTS = [
     "pydantic",
     "toml",
     "pyyaml",
-] + [
-    "numpy",
-    "torch",
-    "tensorflow==2.10.1"
-]
+    "python-dotenv",
+] + ["numpy", "torch", "tensorflow==2.10.1"]
 
 setup(
     name="nazrin",

@@ -108,7 +108,7 @@ def tag(config_file: str):
     else:
         glob_str = f"{config.directory}/*.json"
 
-    model, labels = load_model(config.model_repo)
+    model, labels = load_model(config.tagger_repo)
     dataset = ImageLoadingPrepDataset(glob.glob(glob_str, recursive=config.recursive))
     dataloader = torch.utils.data.DataLoader(
         dataset,

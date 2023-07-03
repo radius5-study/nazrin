@@ -2,7 +2,12 @@ from fire import Fire
 
 from .scraper import scrape
 from .tag import tag
-from .wd14tagger import tag as wd14tag
+
+
+def wd14tag(config_file: str):
+    from . import wd14tagger
+
+    wd14tagger.tag(config_file)
 
 
 def cli():
