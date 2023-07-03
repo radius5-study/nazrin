@@ -32,5 +32,5 @@ setup(
             "nazrin=nazrin.main:cli",
         ]
     },
-    requires=REQUIREMENTS,
+    install_requires=REQUIREMENTS,
 )
