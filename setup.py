@@ -14,8 +14,7 @@ REQUIREMENTS = [
 ] + [
     "numpy",
     "torch",
-    "tensorflow==2.10.1",
-    "transformers",
+    "tensorflow==2.10.1"
 ]
 
 setup(
