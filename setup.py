@@ -6,6 +6,7 @@ REQUIREMENTS = [
     "opencv-python",
     "fire",
     "pillow",
+    "pillow-avif-plugin",
     "huggingface-hub",
     "tqdm",
     "pydantic",

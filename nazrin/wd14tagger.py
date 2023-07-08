@@ -7,6 +7,7 @@ import cv2
 import huggingface_hub
 import numpy as np
 import pandas as pd
+import pillow_avif
 import torch
 import torch.utils.data
 import tqdm

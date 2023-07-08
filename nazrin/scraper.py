@@ -9,6 +9,7 @@ from concurrent.futures import Future, ProcessPoolExecutor
 from typing import *
 
 import PIL.Image
+import pillow_avif
 import toml
 import tqdm
 import yaml
@@ -25,6 +26,18 @@ def createURL(path="/"):
         + path
         + f"?login={ constants.DANBOORU_USER_ID}&api_key={ constants.DANBOORU_API_KEY}"
     )
+
+
+def get_post_meta(id: str):
+    url = createURL(f"/posts/{id}.json")
+    try:
+        with urllib.request.urlopen(url) as r:
+            buf: bytes = r.read()
+            text = buf.decode("utf-8")
+    except urllib.error.URLError as e:
+        return None
+
+    return json.loads(text)
 
 
 def apply_parent_config(subset: ScrapeSubset, parent_config: ScrapeConfig):
