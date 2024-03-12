@@ -13,6 +13,17 @@ def tags(config: TagFilter, post: DanbooruPost):
         for tag in deny:
             if tag.strip() and tag in post["tag_string"]:
                 return False
+    if config.optional is not None:
+        optional = (
+            config.optional
+            if isinstance(config.optional, list)
+            else config.optional.split(" ")
+        )
+        for tag in optional:
+            if tag.strip() and tag in post["tag_string"]:
+                continue
+            else:
+                return False
     return True
 
 

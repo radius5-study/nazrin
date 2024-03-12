@@ -13,9 +13,21 @@ import torch.utils.data
 import tqdm
 from PIL import Image
 from tensorflow import keras
+import tensorflow as tf
 
-from nazrin.config.wd14tag import WD14TagConfig
-from nazrin.types import ImageMeta
+class WD14TagConfig(BaseConfig):
+    directory: str = "data"
+    recursive: bool = False
+    remove_underline: bool = True
+    score_threshold: float = 0.35
+    tagger_repo: str = "SmilingWolf/wd-v1-4-vit-tagger"
+    batch_size: int = 1
+    max_workers: int = 4
+
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+  tf.config.experimental.set_memory_growth(gpu, True)
 
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
@@ -79,19 +91,33 @@ def preprocess_image(
 
 
 class ImageLoadingPrepDataset(torch.utils.data.Dataset):
-    def __init__(self, meta_paths: List[str]):
-        self.meta_paths = meta_paths
+    def __init__(self, file_paths: List[str]):
+        print("Verifying images...")
+        datasets = []
+        for file in tqdm.tqdm(file_paths):
+            if not os.path.exists(file) or os.path.isdir(file):
+                continue
+            try:
+                Image.open(file)
+                datasets.append(file)
+            except:
+                pass
+        self.file_paths = list(set(datasets))
 
     def __len__(self):
-        return len(self.meta_paths)
+        return len(self.file_paths)
 
     def __getitem__(self, idx):
-        meta_path = str(self.meta_paths[idx])
+        file_path = str(self.file_paths[idx])
+        meta_path = os.path.splitext(file_path)[0] + ".json"
 
-        with open(meta_path, "r") as f:
-            meta: ImageMeta = json.loads(f.read())
+        if os.path.exists(meta_path):
+            with open(meta_path, "r") as f:
+                meta = json.loads(f.read())
+        else:
+            meta = {}
 
-        image = Image.open(os.path.join(os.path.dirname(meta_path), meta["filename"]))
+        image = Image.open(file_path)
         image = preprocess_image(image)
 
         return image, meta, meta_path
@@ -105,9 +131,9 @@ def collate_fn_remove_corrupted(batch):
 def tag(config_file: str):
     config = WD14TagConfig.parse_auto(config_file)
     if config.recursive:
-        glob_str = f"{config.directory}/**/*.json"
+        glob_str = f"{config.directory}/**/*"
     else:
-        glob_str = f"{config.directory}/*.json"
+        glob_str = f"{config.directory}/*"
 
     model, labels = load_model(config.tagger_repo)
     dataset = ImageLoadingPrepDataset(glob.glob(glob_str, recursive=config.recursive))
@@ -139,4 +165,4 @@ def tag(config_file: str):
             meta["wd14_tags"] = list(b.keys())
 
             with open(meta_path, "w") as f:
-                f.write(json.dumps(meta))
+                f.write(json.dumps(meta, indent=4))

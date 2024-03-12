@@ -17,4 +17,5 @@ class ScrapeSubset(BaseConfig):
 
 class ScrapeConfig(ScrapeSubset):
     max_workers: int = 1
+    multi_worker_mode: Literal["task", "subset"] = "task"
     subsets: List[ScrapeSubset] = []

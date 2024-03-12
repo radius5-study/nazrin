@@ -4,7 +4,7 @@ import os
 import time
 import traceback
 import urllib.parse
-import urllib.request
+import requests
 from concurrent.futures import Future, ProcessPoolExecutor
 from typing import *
 
@@ -24,17 +24,16 @@ def createURL(path="/"):
     return (
         constants.DANBOORU_URL
         + path
-        + f"?login={ constants.DANBOORU_USER_ID}&api_key={ constants.DANBOORU_API_KEY}"
+        + f"?login={constants.DANBOORU_USER_ID}&api_key={constants.DANBOORU_API_KEY}"
     )
 
 
 def get_post_meta(id: str):
     url = createURL(f"/posts/{id}.json")
     try:
-        with urllib.request.urlopen(url) as r:
-            buf: bytes = r.read()
-            text = buf.decode("utf-8")
-    except urllib.error.URLError as e:
+        res = requests.get(url)
+        text = res.content.decode()
+    except Exception:
         return None
 
     return json.loads(text)
@@ -74,7 +73,7 @@ def run(
             else task["large_file_url"]
         )
 
-        if not filter.check(config.filter, task):
+        if config.filter is not None and not filter.check(config.filter, task):
             continue
 
         filename = f"{task['id']}.{config.convert if config.convert is not None else task['file_ext']}"
@@ -101,24 +100,16 @@ def run(
         )
         while True:
             try:
-                req = urllib.request.Request(url=url, headers={"User-Agent": "ddpn08"})
-                with urllib.request.urlopen(req) as r:
-                    if config.convert is not None:
-                        buf = io.BytesIO(r.read())
-                        img = PIL.Image.open(buf)
-                        data = io.BytesIO()
-                        img.save(data, config.convert)
-                        data = data.getvalue()
-                    else:
-                        data = r.read()
-                    with fs.open(os.path.join(config.outpath, filename), "wb") as f:
-                        f.write(data)
-                    with fs.open(
-                        os.path.join(config.outpath, f"{task['id']}.json"), "w"
-                    ) as f:
-                        f.write(json.dumps(meta, indent=4))
-                    i += 1
-                    break
+                r = requests.get(url, headers={"User-Agent": "ddpn08"})
+                if config.convert is not None:
+                    buf = io.BytesIO(r.content)
+                    img = PIL.Image.open(buf)
+                    data = io.BytesIO()
+                    img.save(data, config.convert)
+                    data = data.getvalue()
+                else:
+                    data = r.content
+                break
             except Exception as e:
                 traceback.print_exc()
                 if try_count > 5:
@@ -126,49 +117,73 @@ def run(
                     break
                 try_count += 1
 
+        with fs.open(os.path.join(config.outpath, filename), "wb") as f:
+            f.write(data)
+        with fs.open(os.path.join(config.outpath, f"{task['id']}.json"), "w") as f:
+            f.write(json.dumps(meta, indent=4))
+        i += 1
+
     return i
 
 
-def _scrape(config: ScrapeConfig):
-    for subset in config.subsets:
-        subset = apply_parent_config(subset, config)
-        iter = 1
-        limit = subset.limit or 1000
-        progress_bar = tqdm.tqdm(total=limit)
-        while limit > 0:
-            url = createURL("/posts.json")
-            url += f"&tags={urllib.parse.quote(subset.tags)}&page={iter}&limit={subset.task_size}"
-            iter += 1
-            try_count = 0
-            while True:
-                try:
-                    with urllib.request.urlopen(url) as res:
-                        data: List[DanbooruPost] = json.loads(res.read().decode())
-                        if len(data) < 1:
-                            break
-                        if len(data) > limit:
-                            data = data[:limit]
-                        with ProcessPoolExecutor(
-                            max_workers=config.max_workers
-                        ) as executor:
-                            for i in range(config.max_workers):
-                                task = data[i :: config.max_workers]
+def process_subset(config: ScrapeConfig, subset: ScrapeSubset, tqdm_idx: int = 0):
+    subset = apply_parent_config(subset, config)
+    iter = 1
+    limit = subset.limit or 1000
+    progress_bar = tqdm.tqdm(total=limit, position=tqdm_idx, leave=False)
+    while limit > 0:
+        url = createURL("/posts.json")
+        url = f"{url}&tags={urllib.parse.quote(subset.tags)}&page={iter}&limit={subset.task_size}"
+        iter += 1
+        try_count = 0
+        while True:
+            try:
+                res = requests.get(url)
+                data: List[DanbooruPost] = json.loads(res.content.decode())
+                break
+            except Exception:
+                try_count += 1
+                if try_count > 3:
+                    print(f"Failed to fetch {url}")
+                    break
+                time.sleep(1)
 
-                                def on_done(feature: Future):
-                                    nonlocal limit
-                                    num = feature.result()
-                                    progress_bar.update(num)
-                                    limit -= num
+        if len(data) < 1:
+            break
+        if len(data) > limit:
+            data = data[:limit]
 
-                                ps = executor.submit(run, subset.dict(), task)
-                                ps.add_done_callback(on_done)
-                        break
-                except Exception as e:
-                    try_count += 1
-                    if try_count > 3:
-                        print(f"Failed to fetch {url}")
-                        break
-                    time.sleep(1)
+        if config.multi_worker_mode == "task" and config.max_workers > 1:
+            with ProcessPoolExecutor(max_workers=config.max_workers) as executor:
+                for i in range(config.max_workers):
+                    task = data[i :: config.max_workers]
+
+                    def on_done(feature: Future):
+                        nonlocal limit
+                        num = feature.result()
+                        progress_bar.update(num)
+                        limit -= num
+
+                    ps = executor.submit(run, subset.dict(), task)
+                    ps.add_done_callback(on_done)
+        else:
+            for task in data:
+                run(subset.dict(), [task])
+                progress_bar.update(1)
+
+
+def process_subsets(config: ScrapeConfig):
+    if config.multi_worker_mode == "task":
+        for subset in config.subsets:
+            process_subset(config, subset)
+    elif config.multi_worker_mode == "subset":
+        if config.max_workers == 1:
+            for subset in config.subsets:
+                process_subset(config, subset)
+        else:
+            with ProcessPoolExecutor(max_workers=config.max_workers) as executor:
+                for idx, subset in enumerate(config.subsets):
+                    executor.submit(process_subset, config, subset, idx)
 
 
 def scrape(config_path: str):
@@ -194,4 +209,4 @@ def scrape(config_path: str):
                 subset[k] = v
 
     config = ScrapeConfig.parse_obj(raw)
-    _scrape(config)
+    process_subsets(config)

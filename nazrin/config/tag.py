@@ -6,12 +6,15 @@ from .base import BaseConfig
 class TagConfig(BaseConfig):
     directory: str = "data"
     recursive: bool = False
+    prefix: List[str] = []
+    suffix: List[str] = []
     remove_underline: bool = True
     tag_character: bool = True
     tag_copyright: bool = True
     tag_artist: bool = True
     tag_meta: bool = False
     tag_rating: bool = True
+    quality_tag: bool = True
     score_map: Dict[str, int] = {
         "~,800": "masterpiece",
         "800,200": "best quality",
@@ -21,3 +24,4 @@ class TagConfig(BaseConfig):
         "10,~": "worst quality",
     }
     use_wd14tag: bool = True
+    where_to_insert_caption: str = "top"
