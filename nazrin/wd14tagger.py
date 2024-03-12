@@ -15,6 +15,8 @@ from PIL import Image
 from tensorflow import keras
 import tensorflow as tf
 
+from config.base import BaseConfig
+
 class WD14TagConfig(BaseConfig):
     directory: str = "data"
     recursive: bool = False
